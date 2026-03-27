@@ -9,6 +9,16 @@ Convert tables to beautiful PNG images for chat platforms.
 
 **Tech Stack:** Playwright + Chromium for perfect emoji and font rendering.
 
+## Performance
+
+| Metric | Time |
+|--------|------|
+| First run (Chromium download) | ~30-60s (one-time) |
+| Browser launch (first render) | ~2-3s |
+| Subsequent renders | **< 500ms** (browser reused) |
+
+> 💡 **Tip:** The browser instance is automatically reused after the first render, making subsequent table generations nearly instant.
+
 ## Quick Start
 
 ### Method 1: CLI (for simple tables)
