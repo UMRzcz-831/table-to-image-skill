@@ -15,6 +15,8 @@ engines:
 
 Convert tables to beautiful PNG images for chat platforms.
 
+**GitHub:** https://github.com/UMRzcz-831/table-to-image-skill
+
 **Tech Stack:** Playwright + Chromium for perfect emoji and font rendering.
 
 ## Prerequisites
@@ -97,10 +99,10 @@ if (result.converted) {
 
 | Theme | Best For | Preview |
 |-------|----------|---------|
-| `discord-light` | Discord light mode (default) | ![discord-light](assets/theme-discord-light.png) |
-| `discord-dark` | Discord dark mode | ![discord-dark](assets/theme-discord-dark.png) |
-| `finance` | Financial reports | ![finance](assets/theme-finance.png) |
-| `minimal` | Clean/simple | ![minimal](assets/theme-minimal.png) |
+| `discord-light` | Discord light mode (default) | ![discord-light](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-light.png) |
+| `discord-dark` | Discord dark mode | ![discord-dark](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-dark.png) |
+| `finance` | Financial reports | ![finance](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-finance.png) |
+| `minimal` | Clean/simple | ![minimal](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-minimal.png) |
 
 ## Advanced Usage
 

@@ -15,6 +15,8 @@ engines:
 
 将表格转换为适用于聊天平台的精美 PNG 图片。
 
+**GitHub:** https://github.com/UMRzcz-831/table-to-image-skill
+
 **技术栈：** Playwright + Chromium，实现完美的 Emoji 和字体渲染。
 
 ## 前置要求
@@ -97,10 +99,10 @@ if (result.converted) {
 
 | 主题 | 适用场景 | 预览 |
 |------|----------|------|
-| `discord-light` | Discord 浅色模式（默认） | ![discord-light](assets/theme-discord-light.png) |
-| `discord-dark` | Discord 深色模式 | ![discord-dark](assets/theme-discord-dark.png) |
-| `finance` | 财务报告 | ![finance](assets/theme-finance.png) |
-| `minimal` | 简洁/简单 | ![minimal](assets/theme-minimal.png) |
+| `discord-light` | Discord 浅色模式（默认） | ![discord-light](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-light.png) |
+| `discord-dark` | Discord 深色模式 | ![discord-dark](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-dark.png) |
+| `finance` | 财务报告 | ![finance](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-finance.png) |
+| `minimal` | 简洁/简单 | ![minimal](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-minimal.png) |
 
 ## 高级用法
 
