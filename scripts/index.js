@@ -339,8 +339,10 @@ export async function renderTable(config) {
   // Get browser instance
   const browserInstance = await getBrowser();
   
-  // Create new page
-  const page = await browserInstance.newPage();
+  // Create new page (with 2x resolution for sharper images)
+  const page = await browserInstance.newPage({
+    deviceScaleFactor: 2
+  });
   
   try {
     // Set content

@@ -1,6 +1,6 @@
 ---
 name: Table2Image
-version: 1.0.0
+version: 1.0.1
 description: 将 Markdown 表格和 JSON 数据转换为 PNG 图片。完美适用于 Discord、Telegram 等 Markdown 表格渲染不佳的平台。当 Claude 需要以视觉吸引人的格式展示表格数据、发送表格到 Discord/Telegram/WhatsApp，或用户要求将表格转换为图片时使用。支持多种主题（discord-light、discord-dark、finance、minimal）、条件格式和自动 Markdown 表格检测。
 install: |
   npm install
