@@ -62,10 +62,10 @@ if (result.converted) {
 
 | Theme | Best For | Preview |
 |-------|----------|---------|
-| `discord-light` | Discord light mode (default) | White bg, purple header |
-| `discord-dark` | Discord dark mode | Blue-gray bg, purple header |
-| `finance` | Financial reports | Dark blue, professional |
-| `minimal` | Clean/simple | White bg, gray accents |
+| `discord-light` | Discord light mode (default) | ![discord-light](assets/theme-discord-light.png) |
+| `discord-dark` | Discord dark mode | ![discord-dark](assets/theme-discord-dark.png) |
+| `finance` | Financial reports | ![finance](assets/theme-finance.png) |
+| `minimal` | Clean/simple | ![minimal](assets/theme-minimal.png) |
 
 ## Advanced Usage
 
