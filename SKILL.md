@@ -7,7 +7,7 @@ description: Convert markdown tables and JSON data to PNG images. Perfect for Di
 
 Convert tables to beautiful PNG images for chat platforms.
 
-**Tech Stack:** node-canvas for native font and emoji support.
+**Tech Stack:** Playwright + Chromium for perfect emoji and font rendering.
 
 ## Quick Start
 

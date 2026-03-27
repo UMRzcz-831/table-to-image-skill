@@ -12,9 +12,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // 用户提供的表格数据
 const tableData = [
-  { scheme: 'A. 渐进优化', tech: '保持 Sharp+SVG，优化字体和配置', pros: '风险低、兼容好', effort: '⭐⭐' },
-  { scheme: 'B. Satori 升级', tech: 'Vercel Satori + Resvg', pros: '现代化、CSS支持好', effort: '⭐⭐⭐⭐' },
-  { scheme: 'C. 混合架构', tech: '简单表格→Sharp，复杂→Puppeteer', pros: '灵活、兼顾性能和功能', effort: '⭐⭐⭐⭐⭐' }
+  { scheme: 'A. 渐进优化', tech: '保持 Sharp+SVG，优化字体和配置', pros: '风险低、兼容好🆚', effort: '⭐⭐' },
+  { scheme: 'B. Satori 升级', tech: 'Vercel Satori + Resvg', pros: '现代化、CSS支持好🆚', effort: '⭐⭐⭐⭐' },
+  { scheme: 'C. 混合架构', tech: '简单表格→Sharp，复杂→Puppeteer', pros: '灵活、兼顾性能和功能😭', effort: '⭐⭐⭐⭐⭐' }
 ];
 
 const columns = [
