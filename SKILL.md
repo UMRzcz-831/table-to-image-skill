@@ -7,6 +7,8 @@ description: Convert markdown tables and JSON data to PNG images. Perfect for Di
 
 Convert tables to beautiful PNG images for chat platforms.
 
+**Tech Stack:** Satori + Resvg for high-quality rendering with better font and emoji support.
+
 ## Quick Start
 
 ### Method 1: CLI (for simple tables)

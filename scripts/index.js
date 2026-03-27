@@ -1,9 +1,41 @@
 /**
  * Table2Image - Main API
  * Convert tables to PNG images for chat platforms
+ * Using Satori + Resvg for better emoji support
  */
 
-import sharp from 'sharp';
+import satori from 'satori';
+import { Resvg } from '@resvg/resvg-js';
+
+// Cache for loaded fonts
+let cachedFonts = null;
+
+async function loadFonts() {
+  if (cachedFonts) return cachedFonts;
+  
+  const fonts = [];
+  
+  try {
+    // Load Noto Sans SC from Google Fonts
+    const notoSansRegular = await fetch(
+      'https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf'
+    ).then(r => r.arrayBuffer());
+    
+    const notoSansBold = await fetch(
+      'https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf'
+    ).then(r => r.arrayBuffer());
+    
+    fonts.push(
+      { name: 'Noto Sans CJK SC', data: notoSansRegular, weight: 400, style: 'normal' },
+      { name: 'Noto Sans CJK SC', data: notoSansBold, weight: 600, style: 'normal' }
+    );
+  } catch (e) {
+    console.warn('Warning: Could not load CJK fonts from network:', e.message);
+  }
+  
+  cachedFonts = fonts;
+  return fonts;
+}
 
 // ============ Types ============
 
@@ -38,7 +70,7 @@ const THEMES = {
     rowAltBg: '#f2f3f5',
     text: '#2e3338',
     border: '#e3e5e8',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
   },
   'discord-dark': {
     background: '#2f3136',
@@ -48,7 +80,7 @@ const THEMES = {
     rowAltBg: '#2f3136',
     text: '#dcddde',
     border: '#40444b',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
   },
   'finance': {
     background: '#1a1a2e',
@@ -58,7 +90,7 @@ const THEMES = {
     rowAltBg: '#16213e',
     text: '#eaeaea',
     border: '#0f3460',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
   },
   'minimal': {
     background: '#ffffff',
@@ -68,7 +100,7 @@ const THEMES = {
     rowAltBg: '#f8f9fa',
     text: '#333333',
     border: '#eeeeee',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
   }
 };
 
@@ -160,16 +192,7 @@ function isNumeric(val) {
   return !isNaN(parseFloat(cleaned)) && isFinite(cleaned);
 }
 
-// ============ SVG Generation ============
-
-function escapeXml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+// ============ Column Width Calculation ============
 
 function calculateColumnWidths(columns, data, fontSize, padding, maxWidth) {
   const minColWidth = fontSize * 6;
@@ -223,7 +246,9 @@ function calculateColumnWidths(columns, data, fontSize, padding, maxWidth) {
   return colWidths;
 }
 
-async function generateTableSVG(data, columns, theme, options = {}) {
+// ============ Satori JSX Generation ============
+
+function createTableElement(data, columns, theme, options = {}) {
   const { title, subtitle, maxWidth = 800, stripe = true } = options;
   const fontSize = 14;
   const padding = { x: 14, y: 10 };
@@ -245,10 +270,7 @@ async function generateTableSVG(data, columns, theme, options = {}) {
   
   // Calculate row heights
   const rows = [];
-  let currentY = 0;
-  
   const titleHeight = title ? fontSize * 2.5 + (subtitle ? fontSize * 1.5 : 0) : 0;
-  currentY = titleHeight;
   
   for (const row of data) {
     let maxLines = 1;
@@ -271,119 +293,251 @@ async function generateTableSVG(data, columns, theme, options = {}) {
   const bodyHeight = rows.reduce((sum, r) => sum + r.height, 0);
   const totalHeight = titleHeight + headerHeight + bodyHeight;
   
-  // Build SVG
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}">`;
-  
-  svg += `
-  <style>
-    text { font-family: ${themeColors.fontFamily}; font-size: ${fontSize}px; }
-    .title { font-weight: 600; font-size: ${fontSize * 1.25}px; }
-    .header { font-weight: 600; }
-  </style>`;
-  
-  svg += `
-  <rect width="100%" height="100%" fill="${themeColors.background}"/>`;
-  
-  // Title
-  if (title) {
-    svg += `
-  <text x="${totalWidth / 2}" y="${fontSize * 1.5}" text-anchor="middle" class="title" fill="${themeColors.text}">${escapeXml(title)}</text>`;
-    if (subtitle) {
-      svg += `
-  <text x="${totalWidth / 2}" y="${fontSize * 3}" text-anchor="middle" fill="${themeColors.text}" style="font-size:${fontSize * 0.9}px;opacity:0.7">${escapeXml(subtitle)}</text>`;
-    }
-  }
-  
-  // Header
-  let y = titleHeight;
-  svg += `
-  <rect x="0" y="${y}" width="${totalWidth}" height="${headerHeight}" fill="${themeColors.headerBg}" rx="4"/>`;
-  
-  let x = 0;
-  columns.forEach((col, i) => {
+  // Create header cells
+  let currentX = 0;
+  const headerCells = columns.map((col, i) => {
+    const align = col.align || (isNumeric(data[0]?.[col.key]) ? 'right' : 'left');
+    const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
     const availWidth = colWidths[i] - padding.x * 2;
     const headerLines = wrapText(col.header, availWidth, fontSize, 2);
     
-    const align = col.align || (isNumeric(data[0]?.[col.key]) ? 'right' : 'left');
-    const textX = align === 'right' 
-      ? x + colWidths[i] - padding.x 
-      : align === 'center' 
-        ? x + colWidths[i] / 2 
-        : x + padding.x;
-    const anchor = align === 'right' ? 'end' : align === 'center' ? 'middle' : 'start';
+    const cellStyle = {
+      width: colWidths[i],
+      height: headerHeight,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start',
+      paddingLeft: padding.x,
+      paddingRight: padding.x,
+      boxSizing: 'border-box'
+    };
     
-    const textBlockHeight = headerLines.length * lineHeight;
-    const startY = y + (headerHeight - textBlockHeight) / 2 + fontSize;
+    const result = {
+      type: 'div',
+      props: {
+        style: { ...cellStyle, display: 'flex', flexDirection: 'column' },
+        children: headerLines.length === 1 ? {
+          type: 'div',
+          props: {
+            style: { 
+              color: themeColors.headerText, 
+              fontSize, 
+              fontWeight: 600,
+              lineHeight: `${lineHeight}px`,
+              textAlign
+            },
+            children: headerLines[0]
+          }
+        } : headerLines.map((line, idx) => ({
+          type: 'div',
+          props: {
+            style: { 
+              color: themeColors.headerText, 
+              fontSize, 
+              fontWeight: 600,
+              lineHeight: `${lineHeight}px`,
+              textAlign
+            },
+            children: line
+          }
+        }))
+      }
+    };
     
-    headerLines.forEach((line, lineIdx) => {
-      svg += `
-  <text x="${textX}" y="${startY + lineIdx * lineHeight}" text-anchor="${anchor}" class="header" fill="${themeColors.headerText}">${escapeXml(line)}</text>`;
-    });
-    
-    x += colWidths[i];
+    currentX += colWidths[i];
+    return result;
   });
   
-  y += headerHeight;
-  
-  // Data rows
-  rows.forEach((row, rowIndex) => {
+  // Create data rows
+  const dataRows = rows.map((row, rowIndex) => {
     const isAlt = stripe && rowIndex % 2 === 1;
     const rowBg = isAlt ? themeColors.rowAltBg : themeColors.rowBg;
     
-    svg += `
-  <rect x="0" y="${y}" width="${totalWidth}" height="${row.height}" fill="${rowBg}"/>`;
-    svg += `
-  <line x1="0" y1="${y}" x2="${totalWidth}" y2="${y}" stroke="${themeColors.border}" stroke-width="0.5"/>`;
-    
     let x = 0;
-    columns.forEach((col, i) => {
+    const cells = columns.map((col, i) => {
       const value = row.data[col.key];
       const formatted = col.formatter ? col.formatter(value, row.data) : String(value ?? '');
       
       const align = col.align || (isNumeric(value) ? 'right' : 'left');
-      const textX = align === 'right' 
-        ? x + colWidths[i] - padding.x 
-        : align === 'center' 
-          ? x + colWidths[i] / 2 
-          : x + padding.x;
-      const anchor = align === 'right' ? 'end' : align === 'center' ? 'middle' : 'start';
+      const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
       
       const availWidth = colWidths[i] - padding.x * 2;
       const lines = col.wrap !== false 
         ? wrapText(formatted, availWidth, fontSize, col.maxLines || 3)
         : [truncateText(formatted, availWidth, fontSize)];
       
-      const textBlockHeight = lines.length * lineHeight;
-      const startY = y + (row.height - textBlockHeight) / 2 + fontSize;
-      
-      // Get style
-      let fill = themeColors.text;
-      let fontWeight = '';
+      // Get custom style
+      let textColor = themeColors.text;
+      let fontWeight = 'normal';
       
       if (col.style) {
         const style = typeof col.style === 'function' ? col.style(value, row.data) : col.style;
-        if (style.color) fill = style.color;
-        if (style.fontWeight === 'bold' || style.fontWeight >= 600) fontWeight = 'font-weight:bold;';
+        if (style.color) textColor = style.color;
+        if (style.fontWeight === 'bold' || style.fontWeight >= 600) fontWeight = 'bold';
       }
       
-      lines.forEach((line, lineIdx) => {
-        svg += `
-  <text x="${textX}" y="${startY + lineIdx * lineHeight}" text-anchor="${anchor}" fill="${fill}" style="${fontWeight}">${escapeXml(line)}</text>`;
-      });
+      const cellResult = {
+        type: 'div',
+        props: {
+          style: {
+            width: colWidths[i],
+            height: row.height,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start',
+            paddingLeft: padding.x,
+            paddingRight: padding.x,
+            boxSizing: 'border-box'
+          },
+          children: lines.length === 1 ? {
+            type: 'div',
+            props: {
+              style: { 
+                color: textColor, 
+                fontSize, 
+                fontWeight,
+                lineHeight: `${lineHeight}px`,
+                textAlign
+              },
+              children: lines[0]
+            }
+          } : lines.map((line, idx) => ({
+            type: 'div',
+            props: {
+              style: { 
+                color: textColor, 
+                fontSize, 
+                fontWeight,
+                lineHeight: `${lineHeight}px`,
+                textAlign
+              },
+              children: line
+            }
+          }))
+        }
+      };
       
       x += colWidths[i];
+      return cellResult;
     });
     
-    y += row.height;
+    return {
+      type: 'div',
+      props: {
+        style: {
+          display: 'flex',
+          flexDirection: 'row',
+          width: totalWidth,
+          height: row.height,
+          backgroundColor: rowBg,
+          borderTop: `1px solid ${themeColors.border}`
+        },
+        children: cells
+      }
+    };
   });
   
-  svg += `
-  <line x1="0" y1="${y}" x2="${totalWidth}" y2="${y}" stroke="${themeColors.border}" stroke-width="0.5"/>`;
+  // Build the complete table
+  const children = [];
   
-  svg += `
-</svg>`;
+  // Title
+  if (title) {
+    const titleChildren = subtitle ? [{
+      type: 'div',
+      props: {
+        style: { 
+          color: themeColors.text, 
+          fontSize: fontSize * 1.25, 
+          fontWeight: 600 
+        },
+        children: title
+      }
+    }, {
+      type: 'div',
+      props: {
+        style: { 
+          color: themeColors.text, 
+          fontSize: fontSize * 0.9, 
+          opacity: 0.7,
+          marginTop: fontSize * 0.3
+        },
+        children: subtitle
+      }
+    }] : {
+      type: 'div',
+      props: {
+        style: { 
+          color: themeColors.text, 
+          fontSize: fontSize * 1.25, 
+          fontWeight: 600 
+        },
+        children: title
+      }
+    };
+    
+    children.push({
+      type: 'div',
+      props: {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: totalWidth,
+          paddingTop: fontSize * 0.5,
+          paddingBottom: subtitle ? fontSize * 0.3 : fontSize * 0.5
+        },
+        children: titleChildren
+      }
+    });
+  }
   
-  return svg;
+  // Header row
+  children.push({
+    type: 'div',
+    props: {
+      style: {
+        display: 'flex',
+        flexDirection: 'row',
+        width: totalWidth,
+        height: headerHeight,
+        backgroundColor: themeColors.headerBg,
+        borderRadius: '4px 4px 0 0'
+      },
+      children: headerCells
+    }
+  });
+  
+  // Data rows
+  children.push(...dataRows);
+  
+  // Bottom border
+  children.push({
+    type: 'div',
+    props: {
+      style: {
+        width: totalWidth,
+        height: 1,
+        backgroundColor: themeColors.border
+      }
+    }
+  });
+  
+  return {
+    type: 'div',
+    props: {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        width: totalWidth,
+        height: totalHeight,
+        backgroundColor: themeColors.background,
+        fontFamily: themeColors.fontFamily
+      },
+      children
+    }
+  };
 }
 
 // ============ Main Export Functions ============
@@ -404,18 +558,51 @@ export async function renderTable(config) {
     throw new Error('Columns must be a non-empty array');
   }
   
-  const svg = await generateTableSVG(data, columns, theme, { title, subtitle, maxWidth, stripe });
+  const themeColors = THEMES[theme] || THEMES['discord-light'];
   
-  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+  // Load fonts
+  const fonts = await loadFonts();
   
-  // Parse width/height from SVG
-  const widthMatch = svg.match(/width="(\d+)"/);
-  const heightMatch = svg.match(/height="(\d+)"/);
+  // Create JSX element for Satori
+  const element = createTableElement(data, columns, theme, { title, subtitle, maxWidth, stripe });
+  
+  // Calculate dimensions
+  const fontSize = 14;
+  const padding = { x: 14, y: 10 };
+  const colWidths = calculateColumnWidths(columns, data, fontSize, padding, maxWidth);
+  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  
+  // Get calculated height from element
+  const totalHeight = element.props.style.height;
+  
+  // Generate SVG with Satori
+  const finalSvg = await satori(element, {
+    width: totalWidth,
+    height: totalHeight,
+    fonts,
+    loadAdditionalAsset: async (code, text) => {
+      // Return empty for emoji to use system font
+      return '';
+    }
+  });
+  
+  // Convert SVG to PNG with Resvg
+  const resvg = new Resvg(finalSvg, {
+    fitTo: {
+      mode: 'original'
+    },
+    font: {
+      loadSystemFonts: true
+    }
+  });
+  
+  const pngData = resvg.render();
+  const pngBuffer = pngData.asPng();
   
   return {
     buffer: pngBuffer,
-    width: widthMatch ? parseInt(widthMatch[1]) : 0,
-    height: heightMatch ? parseInt(heightMatch[1]) : 0,
+    width: totalWidth,
+    height: totalHeight,
     format: 'png'
   };
 }
