@@ -1,6 +1,6 @@
 ---
 name: Table2Image
-version: 1.0.1
+version: 1.0.3
 description: Convert markdown tables and JSON data to PNG images. Perfect for Discord, Telegram, and other platforms where markdown tables render poorly. Use when Claude needs to present tabular data in a visually appealing format, when sending tables to Discord/Telegram/WhatsApp, or when the user asks to convert a table to an image. Supports multiple themes (discord-light, discord-dark, finance, minimal), conditional formatting, and automatic markdown table detection.
 install: |
   npm install
