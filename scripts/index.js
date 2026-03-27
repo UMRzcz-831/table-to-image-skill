@@ -1,41 +1,14 @@
 /**
  * Table2Image - Main API
  * Convert tables to PNG images for chat platforms
- * Using Satori + Resvg for better emoji support
+ * Using node-canvas for native emoji and font support
  */
 
-import satori from 'satori';
-import { Resvg } from '@resvg/resvg-js';
+import { createCanvas, registerFont } from 'canvas';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Cache for loaded fonts
-let cachedFonts = null;
-
-async function loadFonts() {
-  if (cachedFonts) return cachedFonts;
-  
-  const fonts = [];
-  
-  try {
-    // Load Noto Sans SC from Google Fonts
-    const notoSansRegular = await fetch(
-      'https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf'
-    ).then(r => r.arrayBuffer());
-    
-    const notoSansBold = await fetch(
-      'https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf'
-    ).then(r => r.arrayBuffer());
-    
-    fonts.push(
-      { name: 'Noto Sans CJK SC', data: notoSansRegular, weight: 400, style: 'normal' },
-      { name: 'Noto Sans CJK SC', data: notoSansBold, weight: 600, style: 'normal' }
-    );
-  } catch (e) {
-    console.warn('Warning: Could not load CJK fonts from network:', e.message);
-  }
-  
-  cachedFonts = fonts;
-  return fonts;
-}
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ============ Types ============
 
@@ -69,8 +42,7 @@ const THEMES = {
     rowBg: '#ffffff',
     rowAltBg: '#f2f3f5',
     text: '#2e3338',
-    border: '#e3e5e8',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
+    border: '#e3e5e8'
   },
   'discord-dark': {
     background: '#2f3136',
@@ -79,8 +51,7 @@ const THEMES = {
     rowBg: '#36393f',
     rowAltBg: '#2f3136',
     text: '#dcddde',
-    border: '#40444b',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
+    border: '#40444b'
   },
   'finance': {
     background: '#1a1a2e',
@@ -89,8 +60,7 @@ const THEMES = {
     rowBg: '#1a1a2e',
     rowAltBg: '#16213e',
     text: '#eaeaea',
-    border: '#0f3460',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
+    border: '#0f3460'
   },
   'minimal': {
     background: '#ffffff',
@@ -99,12 +69,11 @@ const THEMES = {
     rowBg: '#ffffff',
     rowAltBg: '#f8f9fa',
     text: '#333333',
-    border: '#eeeeee',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
+    border: '#eeeeee'
   }
 };
 
-// ============ Text Width Calculation ============
+// ============ Text Measurement ============
 
 function isCJK(char) {
   const code = char.charCodeAt(0);
@@ -115,71 +84,50 @@ function isCJK(char) {
          (code >= 0xAC00 && code <= 0xD7AF);
 }
 
-function calculateTextWidth(text, fontSize) {
-  let width = 0;
-  for (const char of String(text)) {
-    if (isCJK(char)) {
-      width += fontSize * 1.05;
-    } else if (char.charCodeAt(0) > 127) {
-      width += fontSize * 0.9;
-    } else {
-      width += fontSize * 0.58;
-    }
-  }
-  return width;
+function calculateTextWidth(ctx, text) {
+  return ctx.measureText(text).width;
 }
 
-function truncateText(text, maxWidth, fontSize) {
-  let width = 0;
-  let result = '';
+function truncateText(ctx, text, maxWidth) {
+  let width = ctx.measureText(text).width;
+  if (width <= maxWidth) return text;
   
-  for (const char of String(text)) {
-    const charWidth = isCJK(char) ? fontSize * 1.05 : 
-                      char.charCodeAt(0) > 127 ? fontSize * 0.9 : fontSize * 0.58;
-    if (width + charWidth > maxWidth) {
+  let result = text;
+  while (result.length > 0) {
+    result = result.slice(0, -1);
+    if (ctx.measureText(result + '…').width <= maxWidth) {
       return result + '…';
     }
-    width += charWidth;
-    result += char;
   }
-  return result;
+  return '…';
 }
 
-function wrapText(text, maxWidth, fontSize, maxLines = 3) {
-  const str = String(text);
-  if (calculateTextWidth(str, fontSize) <= maxWidth) {
-    return [str];
-  }
+function wrapText(ctx, text, maxWidth, maxLines = 3) {
+  const width = ctx.measureText(text).width;
+  if (width <= maxWidth) return [text];
   
   const lines = [];
   let currentLine = '';
-  let currentWidth = 0;
   
-  const isCJKText = /[\u4e00-\u9fa5]/.test(str);
-  const segments = isCJKText ? str.split('') : str.split(/(\s+)/);
-  
-  for (const segment of segments) {
-    const segWidth = calculateTextWidth(segment, fontSize);
+  for (const char of text) {
+    const testLine = currentLine + char;
+    const testWidth = ctx.measureText(testLine).width;
     
-    if (currentWidth + segWidth > maxWidth && currentLine.length > 0) {
-      lines.push(currentLine.trimEnd());
-      
+    if (testWidth > maxWidth && currentLine.length > 0) {
+      lines.push(currentLine);
       if (lines.length >= maxLines) {
         const lastLine = lines[lines.length - 1];
-        lines[lines.length - 1] = truncateText(lastLine, maxWidth - calculateTextWidth('…', fontSize), fontSize) + '…';
+        lines[lines.length - 1] = truncateText(ctx, lastLine, maxWidth - ctx.measureText('…').width) + '…';
         return lines;
       }
-      
-      currentLine = segment.trimStart();
-      currentWidth = calculateTextWidth(currentLine, fontSize);
+      currentLine = char;
     } else {
-      currentLine += segment;
-      currentWidth += segWidth;
+      currentLine = testLine;
     }
   }
   
-  if (currentLine.trim()) {
-    lines.push(currentLine.trimEnd());
+  if (currentLine) {
+    lines.push(currentLine);
   }
   
   return lines.length > 0 ? lines : [''];
@@ -194,18 +142,18 @@ function isNumeric(val) {
 
 // ============ Column Width Calculation ============
 
-function calculateColumnWidths(columns, data, fontSize, padding, maxWidth) {
-  const minColWidth = fontSize * 6;
+function calculateColumnWidths(columns, data, ctx, padding, maxWidth) {
+  const minColWidth = 14 * 6; // fontSize * 6
   
   const naturalWidths = columns.map((col, i) => {
-    const headerWidth = calculateTextWidth(col.header, fontSize);
+    const headerWidth = ctx.measureText(col.header).width;
     
     let maxCellWidth = 0;
     data.forEach(row => {
       const value = row[col.key];
       const formatted = col.formatter ? col.formatter(value, row) : String(value ?? '');
-      const textWidth = calculateTextWidth(formatted, fontSize);
-      maxCellWidth = Math.max(maxCellWidth, Math.min(textWidth, fontSize * 30));
+      const textWidth = ctx.measureText(formatted).width;
+      maxCellWidth = Math.max(maxCellWidth, Math.min(textWidth, 14 * 30));
     });
     
     return Math.max(headerWidth, maxCellWidth, minColWidth) + padding.x * 2;
@@ -219,7 +167,7 @@ function calculateColumnWidths(columns, data, fontSize, padding, maxWidth) {
   
   const colWidths = [...naturalWidths];
   const minWidths = columns.map((col, i) => {
-    const headerWidth = calculateTextWidth(col.header, fontSize);
+    const headerWidth = ctx.measureText(col.header).width;
     return Math.max(headerWidth + padding.x * 2, minColWidth);
   });
   
@@ -246,26 +194,31 @@ function calculateColumnWidths(columns, data, fontSize, padding, maxWidth) {
   return colWidths;
 }
 
-// ============ Satori JSX Generation ============
+// ============ Table Rendering ============
 
-function createTableElement(data, columns, theme, options = {}) {
+async function renderTableToCanvas(data, columns, theme, options = {}) {
   const { title, subtitle, maxWidth = 800, stripe = true } = options;
   const fontSize = 14;
   const padding = { x: 14, y: 10 };
   const lineHeight = fontSize * 1.5;
   const themeColors = THEMES[theme] || THEMES['discord-light'];
   
+  // Create a temporary canvas for text measurement
+  const tempCanvas = createCanvas(100, 100);
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  
   // Calculate column widths
-  const colWidths = calculateColumnWidths(columns, data, fontSize, padding, maxWidth);
+  const colWidths = calculateColumnWidths(columns, data, tempCtx, padding, maxWidth);
   const totalWidth = colWidths.reduce((a, b) => a + b, 0);
   
   // Calculate header height
-  const headerLineCounts = columns.map((col, i) => {
+  let maxHeaderLines = 1;
+  columns.forEach((col, i) => {
     const availWidth = colWidths[i] - padding.x * 2;
-    const lines = wrapText(col.header, availWidth, fontSize, 2);
-    return lines.length;
+    const lines = wrapText(tempCtx, col.header, availWidth, 2);
+    maxHeaderLines = Math.max(maxHeaderLines, lines.length);
   });
-  const maxHeaderLines = Math.max(...headerLineCounts, 1);
   const headerHeight = lineHeight * maxHeaderLines + padding.y * 2;
   
   // Calculate row heights
@@ -280,8 +233,8 @@ function createTableElement(data, columns, theme, options = {}) {
       const formatted = col.formatter ? col.formatter(value, row) : String(value ?? '');
       const availWidth = colWidths[i] - padding.x * 2;
       const lines = col.wrap !== false 
-        ? wrapText(formatted, availWidth, fontSize, col.maxLines || 3)
-        : [truncateText(formatted, availWidth, fontSize)];
+        ? wrapText(tempCtx, formatted, availWidth, col.maxLines || 3)
+        : [truncateText(tempCtx, formatted, availWidth)];
       
       maxLines = Math.max(maxLines, lines.length);
     });
@@ -293,250 +246,146 @@ function createTableElement(data, columns, theme, options = {}) {
   const bodyHeight = rows.reduce((sum, r) => sum + r.height, 0);
   const totalHeight = titleHeight + headerHeight + bodyHeight;
   
-  // Create header cells
-  let currentX = 0;
-  const headerCells = columns.map((col, i) => {
-    const align = col.align || (isNumeric(data[0]?.[col.key]) ? 'right' : 'left');
-    const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
+  // Create the actual canvas
+  const canvas = createCanvas(totalWidth, totalHeight);
+  const ctx = canvas.getContext('2d');
+  
+  // Fill background
+  ctx.fillStyle = themeColors.background;
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
+  
+  // Draw title
+  if (title) {
+    ctx.fillStyle = themeColors.text;
+    ctx.font = `600 ${fontSize * 1.25}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(title, totalWidth / 2, fontSize * 1.5);
+    
+    if (subtitle) {
+      ctx.fillStyle = themeColors.text;
+      ctx.font = `${fontSize * 0.9}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.globalAlpha = 0.7;
+      ctx.fillText(subtitle, totalWidth / 2, fontSize * 3);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+  
+  // Draw header background
+  let y = titleHeight;
+  ctx.fillStyle = themeColors.headerBg;
+  ctx.beginPath();
+  ctx.roundRect(0, y, totalWidth, headerHeight, 4);
+  ctx.fill();
+  
+  // Draw header cells
+  let x = 0;
+  ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  ctx.fillStyle = themeColors.headerText;
+  
+  columns.forEach((col, i) => {
     const availWidth = colWidths[i] - padding.x * 2;
-    const headerLines = wrapText(col.header, availWidth, fontSize, 2);
+    const headerLines = wrapText(tempCtx, col.header, availWidth, 2);
     
-    const cellStyle = {
-      width: colWidths[i],
-      height: headerHeight,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start',
-      paddingLeft: padding.x,
-      paddingRight: padding.x,
-      boxSizing: 'border-box'
-    };
+    const align = col.align || (isNumeric(data[0]?.[col.key]) ? 'right' : 'left');
+    ctx.textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
     
-    const result = {
-      type: 'div',
-      props: {
-        style: { ...cellStyle, display: 'flex', flexDirection: 'column' },
-        children: headerLines.length === 1 ? {
-          type: 'div',
-          props: {
-            style: { 
-              color: themeColors.headerText, 
-              fontSize, 
-              fontWeight: 600,
-              lineHeight: `${lineHeight}px`,
-              textAlign
-            },
-            children: headerLines[0]
-          }
-        } : headerLines.map((line, idx) => ({
-          type: 'div',
-          props: {
-            style: { 
-              color: themeColors.headerText, 
-              fontSize, 
-              fontWeight: 600,
-              lineHeight: `${lineHeight}px`,
-              textAlign
-            },
-            children: line
-          }
-        }))
-      }
-    };
+    const textX = align === 'right' 
+      ? x + colWidths[i] - padding.x 
+      : align === 'center' 
+        ? x + colWidths[i] / 2 
+        : x + padding.x;
     
-    currentX += colWidths[i];
-    return result;
+    const textBlockHeight = headerLines.length * lineHeight;
+    let lineY = y + (headerHeight - textBlockHeight) / 2 + fontSize;
+    
+    headerLines.forEach(line => {
+      ctx.fillText(line, textX, lineY);
+      lineY += lineHeight;
+    });
+    
+    x += colWidths[i];
   });
   
-  // Create data rows
-  const dataRows = rows.map((row, rowIndex) => {
+  y += headerHeight;
+  
+  // Draw data rows
+  rows.forEach((row, rowIndex) => {
     const isAlt = stripe && rowIndex % 2 === 1;
     const rowBg = isAlt ? themeColors.rowAltBg : themeColors.rowBg;
     
+    // Row background
+    ctx.fillStyle = rowBg;
+    ctx.fillRect(0, y, totalWidth, row.height);
+    
+    // Top border
+    ctx.strokeStyle = themeColors.border;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(totalWidth, y);
+    ctx.stroke();
+    
+    // Draw cells
     let x = 0;
-    const cells = columns.map((col, i) => {
+    ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+    
+    columns.forEach((col, i) => {
       const value = row.data[col.key];
       const formatted = col.formatter ? col.formatter(value, row.data) : String(value ?? '');
       
       const align = col.align || (isNumeric(value) ? 'right' : 'left');
-      const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
+      ctx.textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left';
+      
+      const textX = align === 'right' 
+        ? x + colWidths[i] - padding.x 
+        : align === 'center' 
+          ? x + colWidths[i] / 2 
+          : x + padding.x;
       
       const availWidth = colWidths[i] - padding.x * 2;
       const lines = col.wrap !== false 
-        ? wrapText(formatted, availWidth, fontSize, col.maxLines || 3)
-        : [truncateText(formatted, availWidth, fontSize)];
+        ? wrapText(tempCtx, formatted, availWidth, col.maxLines || 3)
+        : [truncateText(tempCtx, formatted, availWidth)];
       
       // Get custom style
-      let textColor = themeColors.text;
-      let fontWeight = 'normal';
+      ctx.fillStyle = themeColors.text;
+      let fontWeight = '';
       
       if (col.style) {
         const style = typeof col.style === 'function' ? col.style(value, row.data) : col.style;
-        if (style.color) textColor = style.color;
-        if (style.fontWeight === 'bold' || style.fontWeight >= 600) fontWeight = 'bold';
+        if (style.color) ctx.fillStyle = style.color;
+        if (style.fontWeight === 'bold' || style.fontWeight >= 600) fontWeight = '600 ';
       }
       
-      const cellResult = {
-        type: 'div',
-        props: {
-          style: {
-            width: colWidths[i],
-            height: row.height,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start',
-            paddingLeft: padding.x,
-            paddingRight: padding.x,
-            boxSizing: 'border-box'
-          },
-          children: lines.length === 1 ? {
-            type: 'div',
-            props: {
-              style: { 
-                color: textColor, 
-                fontSize, 
-                fontWeight,
-                lineHeight: `${lineHeight}px`,
-                textAlign
-              },
-              children: lines[0]
-            }
-          } : lines.map((line, idx) => ({
-            type: 'div',
-            props: {
-              style: { 
-                color: textColor, 
-                fontSize, 
-                fontWeight,
-                lineHeight: `${lineHeight}px`,
-                textAlign
-              },
-              children: line
-            }
-          }))
-        }
-      };
+      ctx.font = `${fontWeight}${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      
+      const textBlockHeight = lines.length * lineHeight;
+      let lineY = y + (row.height - textBlockHeight) / 2 + fontSize;
+      
+      lines.forEach(line => {
+        ctx.fillText(line, textX, lineY);
+        lineY += lineHeight;
+      });
       
       x += colWidths[i];
-      return cellResult;
     });
     
-    return {
-      type: 'div',
-      props: {
-        style: {
-          display: 'flex',
-          flexDirection: 'row',
-          width: totalWidth,
-          height: row.height,
-          backgroundColor: rowBg,
-          borderTop: `1px solid ${themeColors.border}`
-        },
-        children: cells
-      }
-    };
+    y += row.height;
   });
-  
-  // Build the complete table
-  const children = [];
-  
-  // Title
-  if (title) {
-    const titleChildren = subtitle ? [{
-      type: 'div',
-      props: {
-        style: { 
-          color: themeColors.text, 
-          fontSize: fontSize * 1.25, 
-          fontWeight: 600 
-        },
-        children: title
-      }
-    }, {
-      type: 'div',
-      props: {
-        style: { 
-          color: themeColors.text, 
-          fontSize: fontSize * 0.9, 
-          opacity: 0.7,
-          marginTop: fontSize * 0.3
-        },
-        children: subtitle
-      }
-    }] : {
-      type: 'div',
-      props: {
-        style: { 
-          color: themeColors.text, 
-          fontSize: fontSize * 1.25, 
-          fontWeight: 600 
-        },
-        children: title
-      }
-    };
-    
-    children.push({
-      type: 'div',
-      props: {
-        style: {
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          width: totalWidth,
-          paddingTop: fontSize * 0.5,
-          paddingBottom: subtitle ? fontSize * 0.3 : fontSize * 0.5
-        },
-        children: titleChildren
-      }
-    });
-  }
-  
-  // Header row
-  children.push({
-    type: 'div',
-    props: {
-      style: {
-        display: 'flex',
-        flexDirection: 'row',
-        width: totalWidth,
-        height: headerHeight,
-        backgroundColor: themeColors.headerBg,
-        borderRadius: '4px 4px 0 0'
-      },
-      children: headerCells
-    }
-  });
-  
-  // Data rows
-  children.push(...dataRows);
   
   // Bottom border
-  children.push({
-    type: 'div',
-    props: {
-      style: {
-        width: totalWidth,
-        height: 1,
-        backgroundColor: themeColors.border
-      }
-    }
-  });
+  ctx.strokeStyle = themeColors.border;
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(totalWidth, y);
+  ctx.stroke();
   
   return {
-    type: 'div',
-    props: {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        width: totalWidth,
-        height: totalHeight,
-        backgroundColor: themeColors.background,
-        fontFamily: themeColors.fontFamily
-      },
-      children
-    }
+    canvas,
+    width: totalWidth,
+    height: totalHeight
   };
 }
 
@@ -558,51 +407,14 @@ export async function renderTable(config) {
     throw new Error('Columns must be a non-empty array');
   }
   
-  const themeColors = THEMES[theme] || THEMES['discord-light'];
+  const { canvas, width, height } = await renderTableToCanvas(data, columns, theme, { title, subtitle, maxWidth, stripe });
   
-  // Load fonts
-  const fonts = await loadFonts();
-  
-  // Create JSX element for Satori
-  const element = createTableElement(data, columns, theme, { title, subtitle, maxWidth, stripe });
-  
-  // Calculate dimensions
-  const fontSize = 14;
-  const padding = { x: 14, y: 10 };
-  const colWidths = calculateColumnWidths(columns, data, fontSize, padding, maxWidth);
-  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
-  
-  // Get calculated height from element
-  const totalHeight = element.props.style.height;
-  
-  // Generate SVG with Satori
-  const finalSvg = await satori(element, {
-    width: totalWidth,
-    height: totalHeight,
-    fonts,
-    loadAdditionalAsset: async (code, text) => {
-      // Return empty for emoji to use system font
-      return '';
-    }
-  });
-  
-  // Convert SVG to PNG with Resvg
-  const resvg = new Resvg(finalSvg, {
-    fitTo: {
-      mode: 'original'
-    },
-    font: {
-      loadSystemFonts: true
-    }
-  });
-  
-  const pngData = resvg.render();
-  const pngBuffer = pngData.asPng();
+  const pngBuffer = canvas.toBuffer('image/png');
   
   return {
     buffer: pngBuffer,
-    width: totalWidth,
-    height: totalHeight,
+    width,
+    height,
     format: 'png'
   };
 }
