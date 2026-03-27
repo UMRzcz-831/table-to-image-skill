@@ -1,0 +1,111 @@
+---
+name: Table2Image
+description: Convert markdown tables and JSON data to PNG images. Perfect for Discord, Telegram, and other platforms where markdown tables render poorly. Use when Claude needs to present tabular data in a visually appealing format, when sending tables to Discord/Telegram/WhatsApp, or when the user asks to convert a table to an image. Supports multiple themes (discord-dark, finance, minimal), conditional formatting, and automatic markdown table detection.
+---
+
+# Table2Image
+
+Convert tables to beautiful PNG images for chat platforms.
+
+## Quick Start
+
+### Method 1: CLI (for simple tables)
+
+```bash
+# Convert JSON data to table image
+echo '[{"name":"Alice","score":95}]' | node scripts/table-cli.mjs --dark --output table.png
+
+# Or use a JSON file
+node scripts/table-cli.mjs --data-file data.json --theme discord-dark --output table.png
+```
+
+### Method 2: Programmatic API (recommended)
+
+```typescript
+import { renderTable, renderDiscordTable } from './scripts/index.js';
+
+// Quick Discord table
+const image = await renderDiscordTable(
+  [{ name: 'AAPL', change: '+2.5%' }],
+  [
+    { key: 'name', header: 'Stock' },
+    { key: 'change', header: 'Change', align: 'right' }
+  ],
+  '📊 Market Watch'
+);
+
+// Send to Discord
+await message.send({ attachment: image.buffer });
+```
+
+### Method 3: Auto-convert markdown tables
+
+```typescript
+import { autoConvertMarkdownTable } from './scripts/index.js';
+
+// Automatically detect and convert
+const result = await autoConvertMarkdownTable(message, 'discord');
+if (result.converted) {
+  await message.send({ attachment: result.image });
+}
+```
+
+## When to Use This Skill
+
+- **Discord/Telegram/WhatsApp**: These platforms don't render markdown tables well
+- **Financial data**: Stock prices, portfolio reports with conditional formatting
+- **Leaderboards**: Rankings with medals and color-coded positions
+- **Comparison tables**: Side-by-side feature comparisons
+- **Any tabular data**: When visual presentation matters
+
+## Themes
+
+| Theme | Best For | Preview |
+|-------|----------|---------|
+| `discord-light` | Discord light mode (default) | White bg, purple header |
+| `discord-dark` | Discord dark mode | Blue-gray bg, purple header |
+| `finance` | Financial reports | Dark blue, professional |
+| `minimal` | Clean/simple | White bg, gray accents |
+
+## Advanced Usage
+
+### Conditional Formatting
+
+```typescript
+import { renderTable } from './scripts/index.js';
+
+const image = await renderTable({
+  data: stocks,
+  columns: [
+    { key: 'symbol', header: 'Symbol' },
+    { 
+      key: 'change', 
+      header: 'Change',
+      align: 'right',
+      formatter: (v) => `${v > 0 ? '+' : ''}${v}%`,
+      style: (v) => ({ color: v > 0 ? '#43b581' : '#f04747' })
+    }
+  ],
+  theme: 'discord-dark'
+});
+```
+
+### Custom Column Widths
+
+```typescript
+columns: [
+  { key: 'name', header: 'Name', width: 150 },
+  { key: 'description', header: 'Desc', width: 300, wrap: true, maxLines: 3 }
+]
+```
+
+## Scripts
+
+- `scripts/table-cli.mjs` - Command-line interface
+- `scripts/index.js` - Programmatic API
+
+See `references/api.md` for complete API documentation.
+
+## Examples
+
+See `references/examples.md` for common use cases and code samples.

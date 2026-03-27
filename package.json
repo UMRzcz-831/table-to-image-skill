@@ -1,0 +1,25 @@
+{
+  "name": "table2image",
+  "version": "1.0.0",
+  "description": "Convert markdown tables and JSON data to PNG images for Discord/Telegram",
+  "type": "module",
+  "main": "scripts/index.js",
+  "bin": {
+    "table2image": "scripts/table-cli.mjs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "table",
+    "image",
+    "png",
+    "discord",
+    "markdown"
+  ],
+  "author": "umr",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}
