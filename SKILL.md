@@ -5,6 +5,8 @@ description: Convert markdown tables and JSON data to PNG images. Perfect for Di
 
 # Table2Image
 
+> **🇬🇧 English** | [🇨🇳 中文](SKILL.zh.md)
+
 Convert tables to beautiful PNG images for chat platforms.
 
 **Tech Stack:** Playwright + Chromium for perfect emoji and font rendering.
