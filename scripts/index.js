@@ -38,7 +38,7 @@ const THEMES = {
     rowAltBg: '#f2f3f5',
     text: '#2e3338',
     border: '#e3e5e8',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
   },
   'discord-dark': {
     background: '#2f3136',
@@ -48,7 +48,7 @@ const THEMES = {
     rowAltBg: '#2f3136',
     text: '#dcddde',
     border: '#40444b',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
   },
   'finance': {
     background: '#1a1a2e',
@@ -58,7 +58,7 @@ const THEMES = {
     rowAltBg: '#16213e',
     text: '#eaeaea',
     border: '#0f3460',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
   },
   'minimal': {
     background: '#ffffff',
@@ -68,7 +68,7 @@ const THEMES = {
     rowAltBg: '#f8f9fa',
     text: '#333333',
     border: '#eeeeee',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
   }
 };
 
