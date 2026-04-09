@@ -30,7 +30,7 @@ import { chromium } from 'playwright';
 
 // ============ Theme Definitions ============
 
-const THEMES = {
+export const THEMES = {
   'discord-light': {
     background: '#ffffff',
     headerBg: '#5865F2',
@@ -66,6 +66,51 @@ const THEMES = {
     rowAltBg: '#f8f9fa',
     text: '#333333',
     border: '#eeeeee'
+  },
+  'sweet-pink': {
+    background: '#1A1A1D',
+    headerBg: '#E6397C',
+    headerText: '#1A1A1D',
+    rowBg: '#1A1A1D',
+    rowAltBg: '#2A2A2D',
+    text: '#E6397C',
+    border: '#E6397C'
+  },
+  'deep-sea': {
+    background: '#F5EFEA',
+    headerBg: '#122E8A',
+    headerText: '#F5EFEA',
+    rowBg: '#F5EFEA',
+    rowAltBg: '#EBE5E0',
+    text: '#122E8A',
+    border: '#122E8A'
+  },
+  'wisteria': {
+    background: '#5E55A2',
+    headerBg: '#91C53A',
+    headerText: '#5E55A2',
+    rowBg: '#5E55A2',
+    rowAltBg: '#4E4592',
+    text: '#91C53A',
+    border: '#91C53A'
+  },
+  'pond-blue': {
+    background: '#91CFD5',
+    headerBg: '#113056',
+    headerText: '#91CFD5',
+    rowBg: '#91CFD5',
+    rowAltBg: '#81BFC5',
+    text: '#113056',
+    border: '#113056'
+  },
+  'camellia': {
+    background: '#F1DDDF',
+    headerBg: '#E72D48',
+    headerText: '#F1DDDF',
+    rowBg: '#F1DDDF',
+    rowAltBg: '#E7D3D5',
+    text: '#E72D48',
+    border: '#E72D48'
   }
 };
 
@@ -106,6 +151,63 @@ process.on('SIGINT', async () => {
   }
   process.exit(0);
 });
+
+// ============ Color Utilities ============
+
+function hexToRgb(hex) {
+  const clean = hex.replace('#', '');
+  const bigint = parseInt(clean, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return { r, g, b };
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(x => {
+    const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+function getLuminance(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function adjustColor(hex, percent) {
+  const { r, g, b } = hexToRgb(hex);
+  const factor = 1 + percent / 100;
+  return rgbToHex(r * factor, g * factor, b * factor);
+}
+
+function expandTheme(theme) {
+  if (typeof theme === 'string') {
+    return THEMES[theme] || THEMES['discord-light'];
+  }
+  if (!theme) {
+    return THEMES['discord-light'];
+  }
+  // If already a full theme object
+  if (theme.background && theme.headerBg && theme.headerText && theme.rowBg && theme.rowAltBg && theme.text && theme.border) {
+    return theme;
+  }
+  // If primary + secondary shorthand
+  if (theme.primary && theme.secondary) {
+    const lum = getLuminance(theme.secondary);
+    return {
+      background: theme.secondary,
+      headerBg: theme.primary,
+      headerText: theme.secondary,
+      rowBg: theme.secondary,
+      rowAltBg: adjustColor(theme.secondary, lum > 0.5 ? -8 : 8),
+      text: theme.primary,
+      border: theme.primary
+    };
+  }
+  // Partial fallback: merge with discord-light
+  return { ...THEMES['discord-light'], ...theme };
+}
 
 // ============ HTML Generation ============
 
@@ -173,7 +275,7 @@ function calculateColumnWidths(columns, data, maxWidth) {
 
 function generateTableHTML(data, columns, theme, options = {}) {
   const { title, subtitle, maxWidth = 800, stripe = true } = options;
-  const themeColors = THEMES[theme] || THEMES['discord-light'];
+  const themeColors = expandTheme(theme);
   const fontSize = 14;
   const lineHeight = 1.5;
   const padding = { x: 14, y: 10 };
@@ -522,4 +624,4 @@ export async function autoConvertMarkdownTable(content, channel, options = {}) {
 }
 
 // Default export
-export default { renderTable, renderDiscordTable, renderFinanceTable, autoConvertMarkdownTable };
+export default { renderTable, renderDiscordTable, renderFinanceTable, autoConvertMarkdownTable, THEMES };
