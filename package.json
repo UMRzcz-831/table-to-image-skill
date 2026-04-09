@@ -1,6 +1,6 @@
 {
   "name": "table2image",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Convert markdown tables and JSON data to PNG images for Discord/Telegram",
   "type": "module",
   "main": "scripts/index.js",
