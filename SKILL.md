@@ -103,6 +103,51 @@ if (result.converted) {
 | `discord-dark` | Discord dark mode | ![discord-dark](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-dark.png) |
 | `finance` | Financial reports | ![finance](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-finance.png) |
 | `minimal` | Clean/simple | ![minimal](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-minimal.png) |
+| `sweet-pink` | Stylish dark + pink accent | ![sweet-pink](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-sweet-pink.png) |
+| `deep-sea` | Classic blue + cream white | ![deep-sea](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-deep-sea.png) |
+| `wisteria` | Retro purple + lime green | ![wisteria](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-wisteria.png) |
+| `pond-blue` | Deep navy + soft cyan | ![pond-blue](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-pond-blue.png) |
+| `camellia` | Warm red + pale pink | ![camellia](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-camellia.png) |
+
+### Custom Themes
+
+You can also pass a **custom theme object** directly to `theme`. For convenience, you only need to provide two colors — `primary` and `secondary` — and the full theme will be generated automatically:
+
+```typescript
+const image = await renderTable({
+  data: [{ name: 'Alice', score: 95 }],
+  columns: [
+    { key: 'name', header: 'Name' },
+    { key: 'score', header: 'Score', align: 'right' }
+  ],
+  theme: {
+    primary: '#e6397c',    // accent color (header, text, border)
+    secondary: '#1a1a1d'   // base color (background, rows)
+  }
+});
+```
+
+![custom-primary-secondary](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/custom-primary-secondary.png)
+
+Or pass a complete custom theme object with all 7 colors:
+
+```typescript
+const image = await renderTable({
+  data: [{ name: 'Alice', score: 95 }],
+  columns: [...],
+  theme: {
+    background: '#1a1a1d',
+    headerBg: '#e6397c',
+    headerText: '#1a1a1d',
+    rowBg: '#1a1a1d',
+    rowAltBg: '#2a2a2d',
+    text: '#e6397c',
+    border: '#e6397c'
+  }
+});
+```
+
+![custom-full](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/custom-full.png)
 
 ## Advanced Usage
 

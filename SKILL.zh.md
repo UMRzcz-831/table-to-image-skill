@@ -103,6 +103,51 @@ if (result.converted) {
 | `discord-dark` | Discord 深色模式 | ![discord-dark](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-discord-dark.png) |
 | `finance` | 财务报告 | ![finance](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-finance.png) |
 | `minimal` | 简洁/简单 | ![minimal](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-minimal.png) |
+| `sweet-pink` | 甜酷粉暗色风格 | ![sweet-pink](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-sweet-pink.png) |
+| `deep-sea` | 深海蓝经典配色 | ![deep-sea](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-deep-sea.png) |
+| `wisteria` | 藤紫复古撞色 | ![wisteria](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-wisteria.png) |
+| `pond-blue` | 捣蓝清新配色 | ![pond-blue](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-pond-blue.png) |
+| `camellia` | 茶花红暖色调 | ![camellia](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/theme-camellia.png) |
+
+### 自定义主题
+
+你也可以直接向 `theme` 传入**自定义主题对象**。为了方便，只需提供两个颜色 —— `primary`（主色）和 `secondary`（副色）—— 程序会自动生成完整的主题样式：
+
+```typescript
+const image = await renderTable({
+  data: [{ name: 'Alice', score: 95 }],
+  columns: [
+    { key: 'name', header: '姓名' },
+    { key: 'score', header: '分数', align: 'right' }
+  ],
+  theme: {
+    primary: '#e6397c',    // 强调色（表头、文字、边框）
+    secondary: '#1a1a1d'   // 底色（背景、行）
+  }
+});
+```
+
+![custom-primary-secondary](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/custom-primary-secondary.png)
+
+或者传入包含全部 7 个颜色的完整主题对象：
+
+```typescript
+const image = await renderTable({
+  data: [{ name: 'Alice', score: 95 }],
+  columns: [...],
+  theme: {
+    background: '#1a1a1d',
+    headerBg: '#e6397c',
+    headerText: '#1a1a1d',
+    rowBg: '#1a1a1d',
+    rowAltBg: '#2a2a2d',
+    text: '#e6397c',
+    border: '#e6397c'
+  }
+});
+```
+
+![custom-full](https://raw.githubusercontent.com/UMRzcz-831/table-to-image-skill/refs/heads/main/assets/custom-full.png)
 
 ## 高级用法
 
