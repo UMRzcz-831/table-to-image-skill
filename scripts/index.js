@@ -240,10 +240,10 @@ function generateTableHTML(data, columns, theme, options = {}) {
       padding: ${padding.y}px ${padding.x}px;
       border-top: 1px solid ${themeColors.border};
     }
-    tr:nth-child(even) {
+    tbody tr:nth-child(even) {
       background: ${stripe ? themeColors.rowAltBg : themeColors.rowBg};
     }
-    tr:nth-child(odd) {
+    tbody tr:nth-child(odd) {
       background: ${themeColors.rowBg};
     }
     .text-right {
